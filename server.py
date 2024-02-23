@@ -6,24 +6,25 @@ from http.server import HTTPServer
 class MyServer(BaseHTTPRequestHandler):
     # Gestione delle richieste GET
     def do_GET(self):
-        if self.path == '/api/resource':
+        if self.path == '/products':
             # Logica per ottenere tutte le risorse
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
             # Invio delle risorse come JSON
-            resources = [{'id': 1, 'name': 'Resource 1'}, {'id': 2, 'name': 'Resource 2'}]
+            resources =Product.FetchAll()
             self.wfile.write(json.dumps(resources).encode())
-        elif self.path.startswith('/api/resource/'):
+        elif self.path.startswith('/product/'):#{'id': id_product, 'name': f'Resource {id_product}'}
             # Estrai l'ID della risorsa dalla richiesta
-            resource_id = int(self.path.split('/')[-1])
+            id_product = int(self.path.split('/')[-1])
             # Logica per ottenere una singola risorsa con ID specifico
-            resource = {'id': resource_id, 'name': f'Resource {resource_id}'}
-            if resource_id in [1, 2]:#indica per lindice del json sopra
+            products =Product.Find(id_product)
+            if products is not None:
                 self.send_response(200)
                 self.send_header("Content-type", "application/json")
                 self.end_headers()
-                self.wfile.write(json.dumps(resource).encode())
+                jsondata={'id':products['id'],'name':products['name'],'brand':products['brand'],'price':products['price']}
+                self.wfile.write(json.dumps(jsondata).encode())
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -35,14 +36,13 @@ class MyServer(BaseHTTPRequestHandler):
 
     # Gestione delle richieste POST
     def do_POST(self):
-        if self.path == '/api/resource':
+        if self.path == '/product':
             # Ottieni il corpo della richiesta
             content_length = int(self.headers['Content-Length'])#lunghezza del corpo in byte
             post_data = self.rfile.read(content_length)
             # Analizza i dati JSON inviati nel corpo della richiesta
-            new_resource = json.loads(post_data)
-            # Simulazione di salvataggio della nuova risorsa nel database
-            # Qui potresti effettuare un'operazione di scrittura nel database
+            product = json.loads(post_data)
+            Product.Create(product['name'],product['brand'],product['price'])
             self.send_response(201)
             self.end_headers()
             self.wfile.write(b'Resource created successfully')
@@ -52,17 +52,16 @@ class MyServer(BaseHTTPRequestHandler):
             self.wfile.write(b'URL not found')
 
     # Gestione delle richieste PUT
-    def do_PUT(self):
-        if self.path.startswith('/api/resource/'):
+    def do_PATCH(self):
+        if self.path.startswith('/product/'):
             # Estrai l'ID della risorsa dalla richiesta
             resource_id = int(self.path.split('/')[-1])
             # Ottieni il corpo della richiesta
             content_length = int(self.headers['Content-Length'])
             put_data = self.rfile.read(content_length)
             # Analizza i dati JSON inviati nel corpo della richiesta
-            updated_resource = json.loads(put_data)
-            # Simulazione di aggiornamento della risorsa nel database
-            # Qui potresti effettuare un'operazione di aggiornamento nel database
+            product = json.loads(put_data)
+            Product.Update(product['name'],product['brand'],product['price'],resource_id)
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b'Resource updated successfully')
@@ -73,11 +72,10 @@ class MyServer(BaseHTTPRequestHandler):
 
     # Gestione delle richieste DELETE
     def do_DELETE(self):
-        if self.path.startswith('/api/resource/'):
+        if self.path.startswith('/produtc/'):
             # Estrai l'ID della risorsa dalla richiesta
             resource_id = int(self.path.split('/')[-1])
-            # Simulazione di eliminazione della risorsa dal database
-            # Qui potresti effettuare un'operazione di eliminazione nel database
+            Product.Delete(resource_id)
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b'Resource deleted successfully')
