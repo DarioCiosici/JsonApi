@@ -1,5 +1,7 @@
 import DBManager
 class Product:
+
+    
     def get_id(self):
         return self._id
     def get_name(self):
@@ -27,9 +29,9 @@ class Product:
         prodotto = cursor.fetchone()
         cursore.Close()
         return prodotto
-    def Delete(self):
+    def Delete(id):
         cursore=dbmanager.Create()
-        cursore.execute("DELETE * FROM products where id=%s", (self.get_id,))
+        cursore.execute("DELETE * FROM products where id=%s", (id))
         cursore.commit()
         cursore.Close()
     def Create(name,price,brand):
@@ -37,9 +39,17 @@ class Product:
         cursore.execute("INSERT INTO products (nome, prezzo, marca) VALUES (%s, %s, %s)", (name, price, brand))
         cursore.commit()
         cursore.Close()
-    def Update(name,price,brand):
+    def Update(name,price,brand,id):
         cursore=dbmanager.Create()
-        cursore.execute("UPDATE products SET nome = %s, prezzo = %s, marca = %s WHERE id = %s", (nome, prezzo, marca, id))
+        if(name is None):
+            cursore.execute("UPDATE products SET prezzo = %s, marca = %s WHERE id = %s", (price, brand, id))
+        if(price is None):
+            cursore.execute("UPDATE products SET nome = %s, marca = %s WHERE id = %s", (name, brand, id))
+        if(brand is None):
+            cursore.execute("UPDATE products SET prezzo = %s WHERE id = %s", (name, price, id))
+        else:
+            cursore.execute("UPDATE products SET nome = %s, prezzo = %s, marca = %s WHERE id = %s", (name, price, brand, id))
         cursore.commit()
         cursore.Close()
+
         
