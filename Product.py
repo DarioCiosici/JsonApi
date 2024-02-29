@@ -1,7 +1,6 @@
-import DBManager
-class Product:
 
-    
+import mysql.connector 
+class Product:
     def get_id(self):
         return self._id
     def get_name(self):
@@ -16,40 +15,57 @@ class Product:
         return self._brand
     def set_brand(self, brand):
         self._brand = brand
-    
+        
     def FetchAll():
-        cursore=dbmanager.Create()
-        cursore.execute("SELECT * FROM products")
-        prodotti = cursor.fetchall()
-        cursore.Close()
-        return prodotti
+        try:
+            con=mysql.connector.connect(host="localhost", user="root",password="",port="3306",database="ecommerce5e")
+            cursore=con.cursor()
+            cursore.execute("SELECT * FROM products")
+
+            prodotti = cursore.fetchall()
+            return prodotti
+        except Exception as e:
+            print(f"Errore durante l'elaborazione della query: {e}")           
     def Find(id):
-        cursore=dbmanager.Create()
+        con=mysql.connector.connect(host="localhost", user="root",password="",port="3306",database="ecommerce5e")
+        cursore=con.cursor()
         cursore.execute("SELECT * FROM products where id=%s", (id,))
-        prodotto = cursor.fetchone()
-        cursore.Close()
+        prodotto = cursore.fetchone()
+        cursore.close()
         return prodotto
     def Delete(id):
-        cursore=dbmanager.Create()
-        cursore.execute("DELETE * FROM products where id=%s", (id))
-        cursore.commit()
-        cursore.Close()
+        con=mysql.connector.connect(host="localhost", user="root",password="",port="3306",database="ecommerce5e")
+        cursore=con.cursor()
+        cursore.execute("DELETE FROM products where id = %s", (id,))
+        con.commit()
+        cursore.close()
+        con.close()
     def Create(name,price,brand):
-        cursore=dbmanager.Create()
-        cursore.execute("INSERT INTO products (nome, prezzo, marca) VALUES (%s, %s, %s)", (name, price, brand))
-        cursore.commit()
-        cursore.Close()
+        con=mysql.connector.connect(host="localhost", user="root",password="",port="3306",database="ecommerce5e")
+        cursore=con.cursor()
+        cursore.execute("INSERT INTO products (nome, prezzo, marca) VALUES (%s, %s, %s)", (name, price, brand,))
+        con.commit()
+        cursore.close()
+        con.close()
     def Update(name,price,brand,id):
-        cursore=dbmanager.Create()
+        con=mysql.connector.connect(host="localhost", user="root",password="",port="3306",database="ecommerce5e")
+        cursore=con.cursor()
         if(name is None):
-            cursore.execute("UPDATE products SET prezzo = %s, marca = %s WHERE id = %s", (price, brand, id))
-        if(price is None):
-            cursore.execute("UPDATE products SET nome = %s, marca = %s WHERE id = %s", (name, brand, id))
-        if(brand is None):
-            cursore.execute("UPDATE products SET prezzo = %s WHERE id = %s", (name, price, id))
+            cursore.execute("UPDATE products SET prezzo = %s, marca = %s WHERE id = %s", (price, brand, id,))
+        elif(price is None):
+            cursore.execute("UPDATE products SET nome = %s, marca = %s WHERE id = %s", (name, brand, id,))
+        elif(brand is None):
+            cursore.execute("UPDATE products SET prezzo = %s WHERE id = %s", (name, price, id,))
+        elif(name is None and price is None): 
+            cursore.execute("UPDATE products SET marca = %s WHERE id = %s", (brand, id,))
+        elif(price is None and brand is None) :
+            cursore.execute("UPDATE products SET nome = %s WHERE id = %s", (name, id,))
+        elif(name is None and brand is None):
+            cursore.execute("UPDATE products SET prezzo = %s WHERE id = %s", (price, id,))
         else:
-            cursore.execute("UPDATE products SET nome = %s, prezzo = %s, marca = %s WHERE id = %s", (name, price, brand, id))
-        cursore.commit()
-        cursore.Close()
+            cursore.execute("UPDATE products SET nome = %s, prezzo = %s, marca = %s WHERE id = %s", (name, price, brand, id,))
+        con.commit()
+        
+        cursore.close()
 
         
