@@ -1,124 +1,135 @@
 import json
-import hashlib
-from Product import *
-from http.server import BaseHTTPRequestHandler
-from http.server import HTTPServer
-class MyServer(BaseHTTPRequestHandler):
-    # Gestione delle richieste GET
+from http.server import BaseHTTPRequestHandler, HTTPServer #importo le librerie 
+from Product import Product
+
+class RequestHandler(BaseHTTPRequestHandler):
+    
+    def _set_response(self, status_code=200, content_type='application/json'):
+        self.send_response(status_code)
+        self.send_header('Content-type', content_type)
+        self.end_headers()
+
     def do_GET(self):
         if self.path == '/products':
-            # Logica per ottenere tutte le risorse
+            self.get_products()
+        elif self.path.startswith('/products/'):
+            parts = self.path.split('/')
+            product_id = int(parts[2])
+            self.get_product(product_id)
+        else:
+            self.send_error(404, 'Not Found')
+
+    def get_products(self):
+        products = Product.fetchAll()
+        json_temp2 = []
+        i = 0
+        for r in products:
+            json_temp = {"type":"products", "id": str(r[0]), "attributes":{"nome": r[1], "marca":r[2], "prezzo":r[3]}}
+            json_temp2.append(json_temp)
+        jsondata = {"data":json_temp2}
+        jsondata = json.dumps(json_def)
+        self._set_response(200)
+        self.wfile.write(jsondata.encode('utf-8'))
+
+    def get_product(self, product_id):
+        product = Product.find(product_id)
+        if product is not None:
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            # Invio delle risorse come JSON
-            products=[]
-            products = Product.FetchAll()
-            json_temp2 = []
-            for p in products:
-                json_temp = {
-                    "type": "products",
-                    "id": p["id"],
-                    "attributes": {
-                        "nome": p["name"],
-                        "marca": p["brand"],
-                        "prezzo": p["price"],
-                    },
-                }
-            json_temp2.append(json_temp)
-            json_s = {"data": json_temp2}
-            self.wfile.write(json.dumps(json_s).encode('utf-8'))
-        elif self.path.startswith('/products/'):#{'id': id_product, 'name': f'Resource {id_product}'}
-            # Estrai l'ID della risorsa dalla richiesta
-            id_product = int(self.path.split('/')[-1])
-            # Logica per ottenere una singola risorsa con ID specifico
-            products =Product.Find(id_product)
-            if products is not None:
-                self.send_response(200)
-                self.send_header("Content-type", "application/json")
-                self.end_headers()
-                jsondata={'data:{type:"products",id:':id_product,',attributes:{nome':products[1],'marca':products[3],'prezzo':products[2]}
-                self.wfile.write(json.dumps(jsondata).encode('utf-8'))
-            else:
-                self.send_response(404)
-                self.end_headers()
-                self.wfile.write(b'Resource not found')
+            jsondata={"data": {"type": "products", "id": product[0], "attributes":{"nome": product[1], "marca":product[2], "prezzo":product[3]}}}
+            self.wfile.write(json.dumps(jsondata).encode('utf-8'))
         else:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b'URL not found')
-
-    # Gestione delle richieste POST
+            self.send_error(404, 'Product Not Found')
     def do_POST(self):
         if self.path == '/products':
-            # Ottieni il corpo della richiesta
-            content_length = int(self.headers['Content-Length'])#lunghezza del corpo in byte
-            post_data = self.rfile.read(content_length)
-            # Analizza i dati JSON inviati nel corpo della richiesta
-            product = json.loads(post_data)
-            Product.Create(product['nome'],product['prezzo'],product['marca'])
-            self.send_response(201)
-            self.end_headers()
-            jsondata={'data:{type:"products",attributes:{name':product['nome'],'brand':product['prezzo'],'price':product['marca']}
-            self.wfile.write(json.dumps(jsondata).encode('utf-8'))
-        else:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b'URL not found')
-
-    # Gestione delle richieste PATCH
-    def do_PATCH(self):
-        if self.path.startswith('/products/'):
-            # Estrai l'ID della risorsa dalla richiesta
-            resource_id = int(self.path.split('/')[-1])
-            # Ottieni il corpo della richiesta
             content_length = int(self.headers['Content-Length'])
-            put_data = self.rfile.read(content_length)
-            # Analizza i dati JSON inviati nel corpo della richiesta
-            product = json.loads(put_data)
-            Product.Update(product['nome'],product['prezzo'],product['marca'],resource_id)
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b'Resource updated successfully')
-            products =Product.Find(resource_id)
-            jsondata={'data:{type:"products",attributes:{name':products[1],'brand':products[3],'price':products[2]}
-            self.wfile.write(json.dumps(jsondata).encode('utf-8'))
+            post_data = self.rfile.read(content_length)
+            self.create_product(post_data)
         else:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b'URL not found')
+            self.send_error(404, 'Not Found')
 
-    # Gestione delle richieste DELETE
+    def create_product(self, post_data):
+        try:
+            data = json.loads(post_data)
+            if 'marca' not in data or 'nome' not in data or 'prezzo' not in data:
+                self.send_error(400, 'Bad Request - Incomplete Data')
+                return
+            
+            new_product = {
+                'marca': data["data"]["attributes"]['marca'],
+                'nome': data["data"]["attributes"]['nome'],
+                'prezzo': data["data"]["attributes"]['prezzo']
+            }
+            product = Product.create(new_product)
+            self._set_response(status_code=201)
+            jsondata = json.dumps({"data": {"type": "products", "id": product["id"], "attributes":{"nome": product["nome"], "marca":product["marca"], "prezzo":product["prezzo"]}}}, indent=2)
+            self.wfile.write(jsondata.encode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_error(400, 'Bad Request - Invalid JSON')
+      
     def do_DELETE(self):
         if self.path.startswith('/products/'):
-            # Estrai l'ID della risorsa dalla richiesta
-            resource_id = int(self.path.split('/')[-1])
-            Product.Delete(resource_id)
-            self.send_response(204)
-            self.end_headers()
-            self.wfile.write(b'Resource deleted successfully')
+            parts = self.path.split('/')
+            product_id = int(parts[2])
+            product = Product.find(product_id)
+            if product:
+                self.delete_product(product)
+            else:
+                self.send_error(404, 'Product Not Found')
         else:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b'URL not found')
-if __name__ == "__main__":
-    # Definizione dell'host e della porta del server
-    hostName = "localhost"
-    serverPort = 8081
+            self.send_error(404, 'Not Found')
+            
 
-    # Creazione dell'istanza del server HTTP, specificando host, porta e classe handler
-    webServer = HTTPServer((hostName, serverPort), MyServer)
-    print("Server started http://%s:%s" % (hostName, serverPort))
+    def delete_product(self, product):
+        try:
+            product = Product.delete(product)
+            self._set_response(status_code=204)  
+        except Exception as e:
+            self.send_error(500, f'Internal Server Error: {str(e)}')
 
-    try:
-        # Avvio del server, che rimane in ascolto per le richieste
-        webServer.serve_forever()
-    except KeyboardInterrupt:
-        # Gestione di un'interruzione da tastiera per fermare il server in modo pulito
-        pass
 
-    # Chiusura del server
-    webServer.server_close()
-    # Stampaggio a console del messaggio di chiusura del server
-    print("Server stopped.")
+    def do_PATCH(self):
+        if self.path.startswith('/products/'):
+            parts = self.path.split('/')
+            product_id = int(parts[2])
+            product = Product.find(product_id)
+            if product:
+                self.update_product(product)
+            else:
+                self.send_error(404, 'Product Not Found')
+        else:
+            self.send_error(404, 'Not Found')
 
+
+            
+    def update_product(self, product):
+        try:
+            parts = self.path.split('/')
+            product_id = int(parts[2])
+            content_length = int(self.headers['Content-Length'])
+            patch_data = self.rfile.read(content_length)
+            data = json.loads(patch_data.decode('utf-8'))
+            if 'marca' not in data:
+                self.send_error(400, 'Bad Request - Incomplete Data')
+                return
+            new_product = {
+                'marca': data['marca']
+            }
+            new_product = {'id':product_id, 'marca': data["data"]["attributes"]['marca'], "prezzo": data["data"]["attributes"]["prezzo"], "nome": data["data"]["attributes"]["nome"]}
+            product = Product.update(new_product)
+            product = Product.find(product_id)
+            jsondata = json.dumps({"data": {"type": "products", "id": product[0], "attributes":{"nome": product[1], "marca":product[2], "prezzo":product[3]}}})
+            self._set_response(status_code=200)
+            self.wfile.write(jsondata.encode('utf-8'))
+        except Exception as e:
+            self.send_error(500, f'Internal Server Error: {str(e)}')
+        
+def run(server_class=HTTPServer, handler_class=RequestHandler, port=8081):
+    server_address = ('8.0.8.1', port)
+    httpd = server_class(server_address, handler_class)
+    print(f'Starting server on port {port}...')
+    httpd.serve_forever()
+
+if __name__ == '__main__':
+    run()
