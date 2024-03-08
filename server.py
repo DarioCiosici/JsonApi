@@ -27,7 +27,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             json_temp = {"type":"products", "id": str(r[0]), "attributes":{"nome": r[1], "marca":r[2], "prezzo":r[3]}}
             json_temp2.append(json_temp)
         jsondata = {"data":json_temp2}
-        jsondata = json.dumps(json_def)
+        jsondata = json.dumps(jsondata)
         self._set_response(200)
         self.wfile.write(jsondata.encode('utf-8'))
 
