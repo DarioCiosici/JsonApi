@@ -1,4 +1,4 @@
-import DBManager 
+from DBManager import connect
 import mysql.connector
 class Product:
     def __init__(self, id, nome, prezzo, marca):
